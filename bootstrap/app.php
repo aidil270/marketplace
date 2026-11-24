@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/doku/notification',
         ]);
+        $middleware->alias([
+            'seller' => \App\Http\Middleware\EnsureUserIsSeller::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

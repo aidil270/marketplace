@@ -8,11 +8,23 @@ use App\Models\User;
 class OrderPolicy
 {
     /**
-     * Tentukan apakah user bisa melihat detail pesanan.
+     * Tentukan apakah user bisa melihat detail pesanan (pembeli atau penjual pemilik toko).
      */
     public function view(User $user, Order $order): bool
     {
-        return $user->id === $order->user_id || $user->isAdmin();
+        return $user->id === $order->user_id 
+            || ($user->store && $user->store->id === $order->store_id) 
+            || $user->isAdmin();
+    }
+
+    /**
+     * Tentukan apakah penjual dapat memproses dan mengirim pesanan ini.
+     */
+    public function ship(User $user, Order $order): bool
+    {
+        return $user->store 
+            && $user->store->id === $order->store_id 
+            && $order->status === 'processing';
     }
 
     /**

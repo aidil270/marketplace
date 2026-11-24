@@ -10,6 +10,12 @@ use App\Http\Controllers\PaymentGroupController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\Seller\SellerDashboardController;
+use App\Http\Controllers\Seller\SellerOrderController;
+use App\Http\Controllers\Seller\SellerProductController;
+use App\Http\Controllers\Seller\SellerRegisterController;
+use App\Http\Controllers\Seller\SellerStoreController;
+use App\Http\Controllers\StoreController;
 use App\Http\Controllers\WishlistController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +24,7 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/produk', [ProductController::class, 'index'])->name('products.index');
 Route::get('/kategori/{slug}', [ProductController::class, 'category'])->name('products.category');
 Route::get('/produk/{slug}', [ProductController::class, 'show'])->name('products.show');
+Route::get('/toko/{slug}', [StoreController::class, 'show'])->name('stores.show');
 
 // Gateway Pembayaran DOKU (Publik & Webhook)
 Route::post('/api/doku/notification', [DokuWebhookController::class, 'handle'])->name('doku.notification');
@@ -73,6 +80,36 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Pendaftaran Penjual (Bagi User Login yang Belum Punya Toko)
+    Route::get('/penjual/daftar', [SellerRegisterController::class, 'create'])->name('seller.register');
+    Route::post('/penjual/daftar', [SellerRegisterController::class, 'store'])->name('seller.register.store');
+});
+
+// Area Khusus Penjual (Hanya Seller Aktif dengan Toko)
+Route::middleware(['auth', 'seller'])->prefix('penjual')->name('seller.')->group(function () {
+    // 1. Dashboard Penjual
+    Route::get('/', [SellerDashboardController::class, 'index'])->name('dashboard');
+
+    // 2. Pengaturan Profil Toko
+    Route::get('/toko', [SellerStoreController::class, 'edit'])->name('store.edit');
+    Route::put('/toko', [SellerStoreController::class, 'update'])->name('store.update');
+
+    // 3. Manajemen Produk Toko
+    Route::get('/produk', [SellerProductController::class, 'index'])->name('products.index');
+    Route::get('/produk/tambah', [SellerProductController::class, 'create'])->name('products.create');
+    Route::post('/produk', [SellerProductController::class, 'store'])->name('products.store');
+    Route::get('/produk/{product}/edit', [SellerProductController::class, 'edit'])->name('products.edit');
+    Route::put('/produk/{product}', [SellerProductController::class, 'update'])->name('products.update');
+    Route::delete('/produk/{product}', [SellerProductController::class, 'destroy'])->name('products.destroy');
+    Route::patch('/produk/{product}/toggle-status', [SellerProductController::class, 'toggleStatus'])->name('products.toggle-status');
+    Route::delete('/produk/{product}/foto/{image}', [SellerProductController::class, 'deleteImage'])->name('products.images.destroy');
+    Route::patch('/produk/{product}/foto/{image}/primary', [SellerProductController::class, 'setPrimaryImage'])->name('products.images.primary');
+
+    // 4. Manajemen Pesanan Toko
+    Route::get('/pesanan', [SellerOrderController::class, 'index'])->name('orders.index');
+    Route::get('/pesanan/{order_number}', [SellerOrderController::class, 'show'])->name('orders.show');
+    Route::post('/pesanan/{order_number}/kirim', [SellerOrderController::class, 'ship'])->name('orders.ship');
 });
 
 require __DIR__.'/auth.php';

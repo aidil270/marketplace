@@ -21,6 +21,7 @@ class Store extends Model
         'logo',
         'banner',
         'city',
+        'phone',
         'address',
         'is_active',
     ];
