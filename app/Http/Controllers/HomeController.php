@@ -26,14 +26,14 @@ class HomeController extends Controller
             ->get();
 
         // 3. Flash sale (produk unggulan dengan stok terbatas)
-        $flashSales = Product::where('is_active', true)
+        $flashSales = Product::available()
             ->where('is_featured', true)
             ->with(['store', 'primaryImage'])
             ->take(6)
             ->get();
 
         // 4. Produk terlaris (diurutkan berdasarkan total order_items)
-        $topProducts = Product::where('is_active', true)
+        $topProducts = Product::available()
             ->with(['store', 'category', 'primaryImage'])
             ->withAvg('reviews', 'rating')
             ->withCount('reviews')
@@ -43,7 +43,7 @@ class HomeController extends Controller
             ->get();
 
         // 5. Rekomendasi produk (paginated)
-        $recommendedProducts = Product::where('is_active', true)
+        $recommendedProducts = Product::available()
             ->with(['store', 'category', 'primaryImage'])
             ->withAvg('reviews', 'rating')
             ->withCount('reviews')

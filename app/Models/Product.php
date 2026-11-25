@@ -96,6 +96,20 @@ class Product extends Model
         return round((float) $this->reviews()->avg('rating') ?: 5.0, 1);
     }
 
+    public function scopeAvailable($query)
+    {
+        return $query->where('is_active', true)
+            ->where(function ($q) {
+                $q->where('stock', '>', 0)
+                    ->orWhereHas('variants', function ($vq) {
+                        $vq->where('stock', '>', 0);
+                    });
+            })
+            ->whereHas('store', function ($sq) {
+                $sq->where('is_active', true);
+            });
+    }
+
     public function getReviewsCountAttribute(): int
     {
         if (array_key_exists('reviews_count', $this->attributes)) {

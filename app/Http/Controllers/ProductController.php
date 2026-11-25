@@ -16,7 +16,7 @@ class ProductController extends Controller
             ->withCount('products')
             ->get();
 
-        $query = Product::where('is_active', true)
+        $query = Product::available()
             ->with(['store', 'category', 'primaryImage'])
             ->withAvg('reviews', 'rating')
             ->withCount('reviews');
@@ -99,8 +99,8 @@ class ProductController extends Controller
 
     public function show(string $slug): View
     {
-        $product = Product::where('slug', $slug)
-            ->where('is_active', true)
+        $product = Product::available()
+            ->where('slug', $slug)
             ->with([
                 'store',
                 'category',
@@ -132,9 +132,9 @@ class ProductController extends Controller
             : false;
 
         // Produk Serupa dari kategori yang sama
-        $relatedProducts = Product::where('category_id', $product->category_id)
+        $relatedProducts = Product::available()
+            ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
-            ->where('is_active', true)
             ->with(['store', 'primaryImage'])
             ->withAvg('reviews', 'rating')
             ->withCount('reviews')

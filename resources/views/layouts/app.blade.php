@@ -9,12 +9,12 @@
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800,900&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|plus-jakarta-sans:600,700,800&display=swap" rel="stylesheet" />
 
         <!-- Styles & Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased bg-[#F8FAFC] text-gray-800 flex flex-col min-h-screen">
+    <body class="font-sans antialiased bg-surface text-stone-800 flex flex-col min-h-screen pb-16 md:pb-0">
         <!-- Shopee-style Gradient Navigation -->
         @include('layouts.navigation')
 

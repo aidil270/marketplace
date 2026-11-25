@@ -480,4 +480,318 @@ class SellerTest extends TestCase
         $response->assertSee('Toko Elektronik Satu');
         $response->assertSee('Produk Publik Unggulan');
     }
+
+    /**
+     * 12. Produk nonaktif, soft-deleted, atau stok nol tidak muncul di katalog/homepage/pencarian dan tidak bisa masuk keranjang.
+     */
+    public function test_inactive_softdeleted_or_zero_stock_product_not_in_catalog_and_cannot_add_to_cart(): void
+    {
+        // a. Produk Nonaktif
+        $inactiveProduct = Product::create([
+            'store_id' => $this->store1->id,
+            'category_id' => $this->category->id,
+            'name' => 'Produk Khusus Nonaktif',
+            'slug' => 'produk-khusus-nonaktif',
+            'description' => 'Tidak boleh tampil.',
+            'price' => 50000,
+            'stock' => 10,
+            'is_active' => false,
+        ]);
+
+        // b. Produk Stok Nol
+        $outOfStockProduct = Product::create([
+            'store_id' => $this->store1->id,
+            'category_id' => $this->category->id,
+            'name' => 'Produk Khusus Habis Stok',
+            'slug' => 'produk-khusus-habis-stok',
+            'description' => 'Stok 0.',
+            'price' => 60000,
+            'stock' => 0,
+            'is_active' => true,
+        ]);
+
+        // c. Produk Soft-Deleted
+        $softDeletedProduct = Product::create([
+            'store_id' => $this->store1->id,
+            'category_id' => $this->category->id,
+            'name' => 'Produk Khusus Terhapus',
+            'slug' => 'produk-khusus-terhapus',
+            'description' => 'Sudah dihapus.',
+            'price' => 70000,
+            'stock' => 10,
+            'is_active' => true,
+        ]);
+        $softDeletedProduct->delete();
+
+        // 1. Cek Homepage
+        $homeRes = $this->get(route('home'));
+        $homeRes->assertDontSee('Produk Khusus Nonaktif');
+        $homeRes->assertDontSee('Produk Khusus Habis Stok');
+        $homeRes->assertDontSee('Produk Khusus Terhapus');
+
+        // 2. Cek Katalog & Pencarian
+        $catalogRes = $this->get(route('products.index', ['q' => 'Produk Khusus']));
+        $catalogRes->assertDontSee('Produk Khusus Nonaktif');
+        $catalogRes->assertDontSee('Produk Khusus Habis Stok');
+        $catalogRes->assertDontSee('Produk Khusus Terhapus');
+
+        // 3. Coba Tambah ke Keranjang
+        // Inactive product
+        $cart1 = $this->actingAs($this->buyer)->post(route('cart.store'), [
+            'product_id' => $inactiveProduct->id,
+            'quantity' => 1,
+        ]);
+        $cart1->assertSessionHas('error');
+
+        // Out of stock product
+        $cart2 = $this->actingAs($this->buyer)->post(route('cart.store'), [
+            'product_id' => $outOfStockProduct->id,
+            'quantity' => 1,
+        ]);
+        $cart2->assertSessionHas('error');
+
+        // Soft deleted product (exists check should fail with 302 back with validation error)
+        $cart3 = $this->actingAs($this->buyer)->post(route('cart.store'), [
+            'product_id' => $softDeletedProduct->id,
+            'quantity' => 1,
+        ]);
+        $cart3->assertSessionHasErrors('product_id');
+    }
+
+    /**
+     * 13. Kirim pesanan dari status selain processing ditolak, dan nomor resi wajib.
+     */
+    public function test_shipping_order_from_non_processing_status_is_rejected_and_tracking_number_is_required(): void
+    {
+        // Pesanan masih pending (belum dibayar)
+        $pendingOrder = Order::create([
+            'invoice_number' => 'INV-PENDING-SHIP',
+            'user_id' => $this->buyer->id,
+            'store_id' => $this->store1->id,
+            'total_amount' => 100000,
+            'shipping_cost' => 10000,
+            'discount_amount' => 0,
+            'final_amount' => 110000,
+            'status' => 'pending',
+            'shipping_address' => 'Alamat Pembeli',
+        ]);
+
+        // Coba kirim pesanan pending
+        $resPending = $this->actingAs($this->seller1)->post(route('seller.orders.ship', $pendingOrder->invoice_number), [
+            'courier_name' => 'JNE',
+            'tracking_number' => 'JNE123',
+        ]);
+        $resPending->assertRedirect();
+        $resPending->assertSessionHas('error');
+        $pendingOrder->refresh();
+        $this->assertEquals('pending', $pendingOrder->status);
+
+        // Pesanan processing tapi tanpa resi
+        $processingOrder = Order::create([
+            'invoice_number' => 'INV-PROC-SHIP',
+            'user_id' => $this->buyer->id,
+            'store_id' => $this->store1->id,
+            'total_amount' => 100000,
+            'shipping_cost' => 10000,
+            'discount_amount' => 0,
+            'final_amount' => 110000,
+            'status' => 'processing',
+            'shipping_address' => 'Alamat Pembeli',
+        ]);
+
+        $resNoResi = $this->actingAs($this->seller1)->post(route('seller.orders.ship', $processingOrder->invoice_number), [
+            'courier_name' => 'JNE',
+            'tracking_number' => '',
+        ]);
+        $resNoResi->assertSessionHasErrors('tracking_number');
+        $processingOrder->refresh();
+        $this->assertEquals('processing', $processingOrder->status);
+    }
+
+    /**
+     * 14. Upload foto tidak valid (tipe, ukuran, jumlah lebih dari 8) ditolak.
+     */
+    public function test_invalid_photo_upload_is_rejected_by_validation(): void
+    {
+        // a. Tipe tidak valid (pdf)
+        $invalidFile = UploadedFile::fake()->create('document.pdf', 100, 'application/pdf');
+        $resType = $this->actingAs($this->seller1)->post(route('seller.products.store'), [
+            'name' => 'Produk Invalid Tipe',
+            'category_id' => $this->category->id,
+            'description' => 'Deskripsi',
+            'price' => 10000,
+            'stock' => 5,
+            'images' => [$invalidFile],
+        ]);
+        $resType->assertSessionHasErrors('images.0');
+
+        // b. Ukuran melebihi 2MB (3000KB)
+        $largeFile = UploadedFile::fake()->create('large.jpg', 3000, 'image/jpeg');
+        $resSize = $this->actingAs($this->seller1)->post(route('seller.products.store'), [
+            'name' => 'Produk Invalid Ukuran',
+            'category_id' => $this->category->id,
+            'description' => 'Deskripsi',
+            'price' => 10000,
+            'stock' => 5,
+            'images' => [$largeFile],
+        ]);
+        $resSize->assertSessionHasErrors('images.0');
+
+        // c. Jumlah lebih dari 8 foto
+        $manyFiles = [];
+        for ($i = 0; $i < 9; $i++) {
+            $manyFiles[] = UploadedFile::fake()->image("img_{$i}.jpg");
+        }
+        $resCount = $this->actingAs($this->seller1)->post(route('seller.products.store'), [
+            'name' => 'Produk Terlalu Banyak Foto',
+            'category_id' => $this->category->id,
+            'description' => 'Deskripsi',
+            'price' => 10000,
+            'stock' => 5,
+            'images' => $manyFiles,
+        ]);
+        $resCount->assertSessionHasErrors('images');
+    }
+
+    /**
+     * 15. Variasi produk: tambah, ubah, hapus.
+     */
+    public function test_product_variants_can_be_added_updated_and_removed(): void
+    {
+        $product = Product::create([
+            'store_id' => $this->store1->id,
+            'category_id' => $this->category->id,
+            'name' => 'Kaos Polos Premium',
+            'slug' => 'kaos-polos-premium',
+            'description' => 'Kaos katun.',
+            'price' => 80000,
+            'stock' => 30,
+            'is_active' => true,
+        ]);
+
+        $v1 = $product->variants()->create([
+            'name' => 'Ukuran',
+            'value' => 'M',
+            'additional_price' => 0,
+            'stock' => 15,
+        ]);
+
+        $v2 = $product->variants()->create([
+            'name' => 'Ukuran',
+            'value' => 'L',
+            'additional_price' => 5000,
+            'stock' => 15,
+        ]);
+
+        // Seller mengubah v1, menghapus v2, dan menambah v3 (XL)
+        $updateData = [
+            'name' => 'Kaos Polos Premium Edited',
+            'category_id' => $this->category->id,
+            'description' => 'Kaos katun super.',
+            'price' => 85000,
+            'stock' => 40,
+            'variants' => [
+                // update v1
+                ['id' => $v1->id, 'name' => 'Ukuran', 'value' => 'M Slim', 'additional_price' => 0, 'stock' => 20],
+                // add v3 (tanpa id)
+                ['id' => null, 'name' => 'Ukuran', 'value' => 'XL', 'additional_price' => 10000, 'stock' => 20],
+                // v2 sengaja tidak disertakan agar terhapus
+            ],
+        ];
+
+        $res = $this->actingAs($this->seller1)->put(route('seller.products.update', $product->id), $updateData);
+        $res->assertRedirect(route('seller.products.edit', $product->id));
+
+        $product->refresh();
+        $this->assertEquals(2, $product->variants()->count());
+
+        // Pastikan v1 terupdate
+        $this->assertDatabaseHas('product_variants', [
+            'id' => $v1->id,
+            'value' => 'M Slim',
+            'stock' => 20,
+        ]);
+
+        // Pastikan v2 terhapus
+        $this->assertDatabaseMissing('product_variants', [
+            'id' => $v2->id,
+        ]);
+
+        // Pastikan v3 terbuat
+        $this->assertDatabaseHas('product_variants', [
+            'product_id' => $product->id,
+            'value' => 'XL',
+            'additional_price' => 10000,
+        ]);
+    }
+
+    /**
+     * 16. Dashboard menampilkan angka yang benar untuk toko sendiri saja.
+     */
+    public function test_seller_dashboard_calculates_correct_metrics_for_own_store_only(): void
+    {
+        // Buat pesanan untuk Store 1
+        Order::create([
+            'invoice_number' => 'INV-METRIC-S1',
+            'user_id' => $this->buyer->id,
+            'store_id' => $this->store1->id,
+            'total_amount' => 500000,
+            'shipping_cost' => 20000,
+            'discount_amount' => 0,
+            'final_amount' => 520000,
+            'status' => 'processing',
+            'shipping_address' => 'Alamat S1',
+        ]);
+
+        // Buat pesanan untuk Store 2
+        Order::create([
+            'invoice_number' => 'INV-METRIC-S2',
+            'user_id' => $this->buyer->id,
+            'store_id' => $this->store2->id,
+            'total_amount' => 900000,
+            'shipping_cost' => 20000,
+            'discount_amount' => 0,
+            'final_amount' => 920000,
+            'status' => 'processing',
+            'shipping_address' => 'Alamat S2',
+        ]);
+
+        $res = $this->actingAs($this->seller1)->get(route('seller.dashboard'));
+        $res->assertStatus(200);
+
+        // Hanya melihat total pendapatan toko 1 (Rp 520.000), bukan toko 2 (Rp 920.000)
+        $res->assertSee('520.000');
+        $res->assertDontSee('920.000');
+    }
+
+    /**
+     * 17. Pembeli melihat kurir dan nomor resi di detail pesanannya setelah penjual mengirim.
+     */
+    public function test_buyer_can_view_courier_and_tracking_number_after_order_is_shipped(): void
+    {
+        $order = Order::create([
+            'invoice_number' => 'INV-RESI-BUYER-VIEW',
+            'user_id' => $this->buyer->id,
+            'store_id' => $this->store1->id,
+            'total_amount' => 300000,
+            'shipping_cost' => 15000,
+            'discount_amount' => 0,
+            'final_amount' => 315000,
+            'status' => 'processing',
+            'shipping_address' => 'Jl. Kenanga No. 8, Jakarta',
+        ]);
+
+        // Penjual mengirimkan pesanan
+        $this->actingAs($this->seller1)->post(route('seller.orders.ship', $order->invoice_number), [
+            'courier_name' => 'SiCepat',
+            'tracking_number' => 'SICEPAT998877ID',
+        ]);
+
+        // Pembeli membuka halaman detail pesanan
+        $buyerRes = $this->actingAs($this->buyer)->get(route('orders.show', $order->id));
+        $buyerRes->assertStatus(200);
+        $buyerRes->assertSee('SiCepat');
+        $buyerRes->assertSee('SICEPAT998877ID');
+        $buyerRes->assertSee('Pesanan Sedang Dikirim');
+    }
 }

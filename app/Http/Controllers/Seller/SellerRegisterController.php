@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\Store;
+use App\Services\StoreService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,44 +51,15 @@ class SellerRegisterController extends Controller
             'logo.max' => 'Ukuran logo maksimal 2MB.',
         ]);
 
-        DB::transaction(function () use ($user, $validated, $request) {
-            // Buat slug unik
-            $baseSlug = Str::slug($validated['name']);
-            $slug = $baseSlug;
-            $counter = 1;
-            while (Store::where('slug', $slug)->exists()) {
-                $slug = "{$baseSlug}-{$counter}";
-                $counter++;
-            }
+        // Upload logo jika ada
+        $logoUrl = null;
+        if ($request->hasFile('logo')) {
+            $path = $request->file('logo')->store('stores/logos', 'public');
+            $logoUrl = '/storage/'.$path;
+        }
 
-            // Upload logo jika ada
-            $logoUrl = null;
-            if ($request->hasFile('logo')) {
-                $path = $request->file('logo')->store('stores/logos', 'public');
-                $logoUrl = '/storage/'.$path;
-            }
-
-            // Pastikan role seller ada
-            $sellerRole = Role::firstOrCreate(
-                ['slug' => 'seller'],
-                ['name' => 'Seller']
-            );
-
-            // Update role pengguna menjadi seller
-            $user->update([
-                'role_id' => $sellerRole->id,
-            ]);
-
-            // Buat record toko baru
-            $user->store()->create([
-                'name' => $validated['name'],
-                'slug' => $slug,
-                'description' => $validated['description'] ?? null,
-                'city' => $validated['city'],
-                'phone' => $validated['phone'],
-                'logo' => $logoUrl,
-                'is_active' => true,
-            ]);
+        DB::transaction(function () use ($user, $validated, $logoUrl) {
+            app(StoreService::class)->createStoreForUser($user, $validated, $logoUrl);
         });
 
         return redirect()->route('seller.dashboard')

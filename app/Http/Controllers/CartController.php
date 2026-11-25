@@ -7,6 +7,7 @@ use App\Services\CartService;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class CartController extends Controller
@@ -42,7 +43,7 @@ class CartController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'product_id' => ['required', 'exists:products,id'],
+            'product_id' => ['required', Rule::exists('products', 'id')->whereNull('deleted_at')],
             'variant_id' => ['nullable', 'exists:product_variants,id'],
             'quantity' => ['required', 'integer', 'min:1'],
             'is_buy_now' => ['nullable', 'boolean'],

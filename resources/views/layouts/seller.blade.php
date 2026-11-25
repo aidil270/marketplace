@@ -9,12 +9,12 @@
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=inter:300,400,500,600,700,800,900&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|plus-jakarta-sans:600,700,800&display=swap" rel="stylesheet" />
 
         <!-- Scripts & Styles -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased bg-[#F8FAFC] text-gray-800" x-data="{ sidebarOpen: false }">
+    <body class="font-sans antialiased bg-surface text-stone-800" x-data="{ sidebarOpen: false }">
         <div class="min-h-screen flex flex-col md:flex-row">
             <!-- Sidebar Desktop & Mobile Off-canvas -->
             <aside 

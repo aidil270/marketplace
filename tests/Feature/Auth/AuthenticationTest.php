@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Role;
+use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -50,5 +52,45 @@ class AuthenticationTest extends TestCase
 
         $this->assertGuest();
         $response->assertRedirect('/');
+    }
+
+    public function test_redirect_after_login_according_to_role(): void
+    {
+        // Pastikan roles ada
+        $buyerRole = Role::firstOrCreate(['slug' => 'buyer'], ['name' => 'Pembeli']);
+        $sellerRole = Role::firstOrCreate(['slug' => 'seller'], ['name' => 'Penjual']);
+        $adminRole = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrator']);
+
+        // 1. Buyer -> /dashboard
+        $buyer = User::factory()->create(['role_id' => $buyerRole->id]);
+        $responseBuyer = $this->post('/login', [
+            'email' => $buyer->email,
+            'password' => 'password',
+        ]);
+        $this->assertAuthenticatedAs($buyer);
+        $responseBuyer->assertRedirect(route('dashboard', absolute: false));
+
+        $this->post('/logout');
+
+        // 2. Seller -> /penjual (seller.dashboard)
+        $seller = User::factory()->create(['role_id' => $sellerRole->id]);
+        Store::factory()->create(['user_id' => $seller->id]);
+        $responseSeller = $this->post('/login', [
+            'email' => $seller->email,
+            'password' => 'password',
+        ]);
+        $this->assertAuthenticatedAs($seller);
+        $responseSeller->assertRedirect(route('seller.dashboard', absolute: false));
+
+        $this->post('/logout');
+
+        // 3. Admin -> /admin (admin.dashboard)
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
+        $responseAdmin = $this->post('/login', [
+            'email' => $admin->email,
+            'password' => 'password',
+        ]);
+        $this->assertAuthenticatedAs($admin);
+        $responseAdmin->assertRedirect(route('admin.dashboard', absolute: false));
     }
 }

@@ -20,8 +20,13 @@ class User extends Authenticatable
         'email',
         'password',
         'role_id',
+        'is_active',
         'phone',
         'avatar',
+    ];
+
+    protected $attributes = [
+        'is_active' => true,
     ];
 
     protected $hidden = [
@@ -34,6 +39,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 

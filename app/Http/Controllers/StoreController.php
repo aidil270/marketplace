@@ -36,6 +36,7 @@ class StoreController extends Controller
         // Query produk toko
         $productsQuery = $store->products()
             ->where('is_active', true)
+            ->where('stock', '>', 0)
             ->with(['primaryImage', 'category']);
 
         // Filter kata kunci

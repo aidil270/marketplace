@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\AddressController;
+use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminStoreController;
+use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\DokuWebhookController;
@@ -110,6 +113,22 @@ Route::middleware(['auth', 'seller'])->prefix('penjual')->name('seller.')->group
     Route::get('/pesanan', [SellerOrderController::class, 'index'])->name('orders.index');
     Route::get('/pesanan/{order_number}', [SellerOrderController::class, 'show'])->name('orders.show');
     Route::post('/pesanan/{order_number}/kirim', [SellerOrderController::class, 'ship'])->name('orders.ship');
+});
+
+// Area Khusus Administrator
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    // 1. Dashboard Admin
+    Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    // 2. Kelola Pengguna
+    Route::get('/pengguna', [AdminUserController::class, 'index'])->name('users.index');
+    Route::get('/pengguna/{user}', [AdminUserController::class, 'show'])->name('users.show');
+    Route::patch('/pengguna/{user}/toggle-status', [AdminUserController::class, 'toggleStatus'])->name('users.toggle-status');
+
+    // 3. Kelola Toko
+    Route::get('/toko', [AdminStoreController::class, 'index'])->name('stores.index');
+    Route::get('/toko/{store}', [AdminStoreController::class, 'show'])->name('stores.show');
+    Route::patch('/toko/{store}/toggle-status', [AdminStoreController::class, 'toggleStatus'])->name('stores.toggle-status');
 });
 
 require __DIR__.'/auth.php';

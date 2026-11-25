@@ -24,6 +24,7 @@ class Store extends Model
         'phone',
         'address',
         'is_active',
+        'suspension_reason',
     ];
 
     protected function casts(): array

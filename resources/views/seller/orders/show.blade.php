@@ -85,11 +85,11 @@
                     Pesanan ini telah lunas dibayar. Silakan kemas produk dan masukkan kurir pengiriman beserta nomor resi resmi di bawah ini.
                 </p>
 
-                <form method="POST" action="{{ route('seller.orders.ship', $order->invoice_number) }}" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <form method="POST" action="{{ route('seller.orders.ship', $order->invoice_number) }}" @submit="submitting = true" x-data="{ submitting: false }" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     @csrf
                     <div>
-                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Kurir Pengiriman <span class="text-red-500">*</span></label>
-                        <select name="courier_name" required class="w-full text-xs border-gray-300 rounded-xl focus:ring-primary focus:border-primary shadow-sm">
+                        <label class="block text-xs font-bold text-stone-700 uppercase mb-1">Kurir Pengiriman <span class="text-rose-500">*</span></label>
+                        <select name="courier_name" required class="w-full text-xs border-stone-300 rounded-xl focus:ring-primary focus:border-primary shadow-sm py-2">
                             <option value="JNE">JNE Express</option>
                             <option value="J&T">J&T Express</option>
                             <option value="SiCepat">SiCepat Ekspres</option>
@@ -101,15 +101,25 @@
                     </div>
 
                     <div>
-                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Nomor Resi Pengiriman <span class="text-red-500">*</span></label>
+                        <label class="block text-xs font-bold text-stone-700 uppercase mb-1">Nomor Resi Pengiriman <span class="text-rose-500">*</span></label>
                         <input type="text" name="tracking_number" required placeholder="Contoh: JNE123456789ID"
-                            class="w-full text-xs font-mono uppercase border-gray-300 rounded-xl focus:ring-primary focus:border-primary shadow-sm" />
+                            class="w-full text-xs font-mono uppercase border-stone-300 rounded-xl focus:ring-primary focus:border-primary shadow-sm py-2" />
                     </div>
 
                     <div class="flex items-end">
-                        <button type="submit" class="w-full py-2.5 px-4 bg-primary hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-700/20 transition flex items-center justify-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            Kirim Pesanan Sekarang
+                        <button type="submit" :disabled="submitting" class="w-full min-h-[44px] py-2.5 px-4 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50">
+                            <template x-if="submitting">
+                                <span class="flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                                    <span>Memproses...</span>
+                                </span>
+                            </template>
+                            <template x-if="!submitting">
+                                <span class="flex items-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span>Kirim Pesanan Sekarang</span>
+                                </span>
+                            </template>
                         </button>
                     </div>
                 </form>

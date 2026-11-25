@@ -4,6 +4,7 @@
     </x-slot>
 
     <div class="max-w-4xl mx-auto space-y-6" x-data="{
+        submitting: false,
         variants: [],
         addVariant() {
             this.variants.push({ name: '', value: '', additional_price: 0, stock: '' });
@@ -23,7 +24,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('seller.products.store') }}" enctype="multipart/form-data" class="space-y-6">
+        <form method="POST" action="{{ route('seller.products.store') }}" enctype="multipart/form-data" @submit="submitting = true" class="space-y-6">
             @csrf
 
             <!-- 1. Informasi Utama -->
@@ -178,12 +179,22 @@
 
             <!-- Submit Buttons -->
             <div class="flex items-center justify-end gap-3 pt-4">
-                <a href="{{ route('seller.products.index') }}" class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-bold transition">
+                <a href="{{ route('seller.products.index') }}" class="min-h-[44px] px-5 py-2.5 rounded-xl border border-stone-300 text-stone-700 hover:bg-stone-50 text-xs font-bold transition flex items-center">
                     Batal
                 </a>
-                <button type="submit" class="px-6 py-2.5 rounded-xl bg-primary hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-700/20 transition flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    Simpan Produk
+                <button type="submit" :disabled="submitting" class="min-h-[44px] px-6 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50">
+                    <template x-if="submitting">
+                        <span class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                            <span>Menyimpan...</span>
+                        </span>
+                    </template>
+                    <template x-if="!submitting">
+                        <span class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span>Simpan Produk</span>
+                        </span>
+                    </template>
                 </button>
             </div>
         </form>
